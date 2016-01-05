@@ -34,8 +34,13 @@ def main():
                          redirect_uri=["redirect_uri"])
 
     # get list of default subreddits and start from there
-    default_url = urllib2.urlopen("https://www.reddit.com/subreddits/default.json")
-    default_dict = json.loads(default_url.read())
+    if os.path.isfile('default.json'):
+        with open('default.json', 'rb') as default_file:
+            default_dict = json.load(default_file)
+    else:
+        default_url = urllib2.urlopen("https://www.reddit.com/subreddits/default.json")
+        default_dict = json.loads(default_url.read())
+
     # for each default sub, add to stack to check
     for sub in default_dict["data"]["children"]:
         to_visit.append(sub["data"]["display_name"])
