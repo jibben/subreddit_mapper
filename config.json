@@ -1,5 +1,0 @@
-{
-    "client_id":"id here",
-    "client_secret":"secret here",
-    "redirect_uri":"http://127.0.0.1:65010/authorize_callback" 
-}
