@@ -7,7 +7,7 @@ class subreddit:
         # related: list of other subs   [sdk,dfamkj,sdfhj]
     __slots__ = ['name','subs','nsfw','type','related']
 
-    def __init__(self, name = '', subs = 0,
+    def __init__(self, name, subs = 0,
                  nsfw = False, type = "any", related = []):
         self.name = name
         self.subs = subs

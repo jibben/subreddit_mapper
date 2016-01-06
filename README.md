@@ -8,6 +8,8 @@ To get an ID and secret, go to [reddit's app page](https://www.reddit.com/prefs/
 ## Behavior
 
 ### Current behavior
+v0.2
+Writes information with related subreddits to output.csv and visits all subreddits found with depth-first-search. Does not handle link shortened reddit connections yet. If the program crashes, it will gracefully save all information to file so it can be started again later
 v0.1
 Prints information (no related subreddits) for all default subreddits
 
