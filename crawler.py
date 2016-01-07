@@ -13,8 +13,13 @@ import signal   # to catch ^C
 from subreddit import subreddit
 
 # global variable to handle exit
-
 exit = False
+
+# regexes
+re_sub = re.compile('\/r\/([0-9a-zA-Z_]{1,21})')
+re_multi = re.compile('user\/([0-9a-zA-Z_-]{1,21})\/m\/([0-9a-zA-Z_-]{1,21})')
+
+
 # exit gracefully upon ctrl-c press
 def signal_handler(signal, frame):
     global exit
@@ -25,13 +30,11 @@ def signal_handler(signal, frame):
 def parse_sidebar(r,sub_name,sidebar):
     related = set()
     # subreddits are of the form '/r/namehere'
-    re_sub = re.compile('\/r\/([0-9a-zA-Z_]{1,21})')
-    re_multi = re.compile('user\/([0-9a-zA-Z_-]{1,21})\/m\/([0-9a-zA-Z_-]{1,21})')
     # fist simply parse any mentions directly in sidebar
     for match in re_sub.findall(sidebar):
         related.add(match.lower().encode('ascii','ignore'))
 
-    # then fine any mentioned multireddits and parse them
+    # then find any mentioned multireddits and parse them
     for match in re_multi.findall(sidebar):
         multi = r.get_multireddit(match[0], match[1], fetch=True)
         for sub in multi.subreddits:
