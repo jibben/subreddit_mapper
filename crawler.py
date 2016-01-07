@@ -88,12 +88,12 @@ def get_defaults():
 
 # visit the subreddit with praw, get information, and write to file
 def visit_sub(r, sub_name, f_output):
-    sub_info = r.get_subreddit(sub_name, fetch=True)
-    sub = subreddit(sub_name,
-                    sub_info.subscribers,
-                    sub_info.over18,
-                    sub_info.submission_type,
-                    parse_sidebar(r,sub_name,sub_info.description))
+    p_sub = r.get_subreddit(sub_name, fetch=True)
+    related = parse_sidebar(r,sub_name,p_sub.description if p_sub.description!=None else "")
+    # create the subreddit info
+    sub = subreddit(sub_name, p_sub.subscribers, p_sub.over18,
+            p_sub.submission_type if p_sub.submission_type!=None else "none",
+            related)
 
     write_sub(sub, f_output)
 
