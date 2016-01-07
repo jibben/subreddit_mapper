@@ -1,0 +1,3 @@
+#!/bin/bash
+rm -f seen.json to_visit.json output.csv
+rm out.log

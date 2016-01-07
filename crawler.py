@@ -9,8 +9,17 @@ import os       # for checking for files / moving files
 import time     # to sleep after manual json request
 import traceback# to put full traceback into log file
 import sys      # to exit program
-
+import signal   # to catch ^C 
 from subreddit import subreddit
+
+# global variable to handle exit
+
+exit = False
+# exit gracefully upon ctrl-c press
+def signal_handler(signal, frame):
+    global exit
+    exit = True
+    print "\nExiting..."
 
 # function to find related subreddits from sidebar, returns list of names
 def parse_sidebar(r,sub_name,sidebar):
@@ -57,22 +66,24 @@ def build_praw(user_agent):
     # return full praw object
     return rd
 
-# get list of default subreddits either from local file or from reddit
+# check for local list of defaults and load, otherwise download and load
 def get_defaults():
-    default_list = []
-    # if there is a local file of defaults, use that
-    if os.path.isfile('default.json'):
-        with open('default.json', 'rb') as f_defaults:
-            default_dict = json.load(f_defaults)
-    # otherwise get from reddit website and load
-    else:
+    # if no file, download and write it
+    if not os.path.isfile('default.json'):
         default_url = urllib2.urlopen("https://www.reddit.com/subreddits/default.json")
+        with open('default.json', 'w') as f_defaults:
+            f_defaults.write(default_url.read())
+
         time.sleep(1)   #we have to sleep to respect API rules
-        default_dict = json.loads(default_url.read())
-    # then add each sub name in the json
+
+    # now can load defaults from file
+    with open('default.json', 'rb') as f_defaults:
+        default_dict = json.load(f_defaults)
+
+    default_list = []
     for sub in default_dict["data"]["children"]:
         default_list.append(sub["data"]["display_name"].lower())
-    # and return
+
     return default_list
 
 # visit the subreddit with praw, get information, and write to file
@@ -91,15 +102,16 @@ def visit_sub(r, sub_name, f_output):
 # write error information to errors.log
 # write to_visit.json and seen.json
 # exit
-def exit_write(to_visit, seen, e, traceback):
+def exit_write(cur_sub, to_visit, seen, f, e, traceback = ""):
     # write error info
-    with open('errors.log', 'a') as f:
+    with open('out.log', 'a') as f:
+        f.write("Time: ")
+        f.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+        f.write("\nExited on sub: " + cur_sub)
+        f.write("\n" + str(e))
+        if traceback:
+            f.write("\n" + traceback)
         f.write("\n\n")
-        f.write(time.strftime("%Y-%m-$d %H:%M:%S", time.localtime()))
-        f.write("\n")
-        f.write(e)
-        f.write("\n")
-        f.write(traceback)
 
     # write seen to seen.json
     with open('seen.json', 'w') as f:
@@ -109,6 +121,7 @@ def exit_write(to_visit, seen, e, traceback):
     with open('to_visit.json', 'w') as f:
         f.write(json.dumps(to_visit))
 
+    f.close () # close output file
     sys.exit(2)
 
 # returns list: [to_visit, seen, f_output]
@@ -150,13 +163,13 @@ def init_vars():
 
 def main():
     # initialize praw object and holding structures
-    r = build_praw('subreddit_mapper v0.1 github.com/jibbenHillen')
+    r = build_praw('subreddit_mapper v0.3 github.com/jibbenHillen')
 
     # initialize to_visit and seen
     to_visit,seen,out_file = init_vars()
 
     # while there is a subreddit in the stack, visit it
-    while to_visit:
+    while to_visit and not exit:
         sub_name = to_visit.pop()
         try:
             current_sub = visit_sub(r, sub_name, out_file)
@@ -167,14 +180,20 @@ def main():
                     to_visit.append(sub)
                     seen.add(sub)
 
-        except praw.errors.Forbidden: #no permission to access sub
+        except (praw.errors.Forbidden, praw.errors.NotFound,
+                praw.errors.InvalidSubreddit): #error with the sub, continue
             pass
         except (KeyboardInterrupt, SystemExit):
             raise
         except Exception as e: #other error, such as response failure
             to_visit.append(sub_name)
             #exit gracefully
-            exit_write(to_visit,seen,e,traceback.format_exc())
+            exit_write(sub_name,to_visit,seen,out_file,e,traceback.format_exc())
+    if exit:
+        exit_write(sub_name,to_visit,seen,out_file,"Ctrl-C Pressed")
+    else:
+        exit_write(sub_name,to_visit,seen,out_file,"Completed successfully")
 
 if __name__ == "__main__":
+    signal.signal(signal.SIGINT, signal_handler)
     main()
