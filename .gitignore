@@ -1,4 +1,5 @@
-default.json
-config.json
+out.log
+output.csv
+*.json
 *.pyc
 *.swp

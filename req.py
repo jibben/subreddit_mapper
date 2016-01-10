@@ -3,17 +3,21 @@ import httplib
 
 # this class will return the end url of a link shortener
 # works with multi-level shortening
-class short_request():
+class link_lengthener():
 
-    __slots__ = ['use_secure','server','path','connection','response']
     # to initialize, parse the given url into parts for later request
     # undefined behavior for url without server
     def __init__(self,url):
+        # url needs to start with http(s) for parser to work
+        if "://" not in url:
+            url = "http://" + url
         o = urlparse(url)
         if o.scheme == 'https':
             self.use_secure = True
-        else:
+        elif o.scheme == 'http':
             self.use_secure = False
+        else:
+            raise NotHTTP("Link must be HTTP(S), not " + o.scheme)
         self.server = o.netloc
         if o.path == '':
             self.path = '/'
@@ -33,6 +37,7 @@ class short_request():
         self.response = self.connection.getresponse()
         self.connection.close()
 
+    # get the response message
     def get_response(self):
         if self.response is None:
             self.__get_response()
@@ -41,20 +46,18 @@ class short_request():
                 + str(self.response.status) + " " + self.response.reason)
         return resp_str
 
+    # get the end url
     def get_url(self):
         if self.response is None:
             self.__get_response()
         return self.response.getheader('location')
 
+    # get list of header elements
     def get_header(self):
         if self.response is None:
             self.__get_response()
         return self.response.msg.headers
 
-def main():
-    req = short_request("http://goo.gl/N67DsV")
-    print req.get_response()
-    print req.get_url()
-
-if __name__ == "__main__":
-    main()
+# Exception to use in case of not HTTP link
+class NotHTTP(Exception):
+    pass
