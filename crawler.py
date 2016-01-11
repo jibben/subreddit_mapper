@@ -1,5 +1,7 @@
 #! /usr/bin/env python
 
+### external packages ###
+
 import praw     # wrapper for python API
 import json     # to handle json from initial default fetch
 import urllib2  # to handle initial default fetch
@@ -9,16 +11,29 @@ import os       # for checking for files / moving files
 import time     # to sleep after manual json request
 import traceback# to put full traceback into log file
 import sys      # to exit program
-import signal   # to catch ^C 
-from subreddit import subreddit
+import signal   # to catch ^C
+
+
+### custom classes ###
+
+from subreddit import subreddit # subreddit object
+from req import link_lengthener # class to extend shortened links
+
+
+### regexes ###
+
+# match sub name
+re_sub = re.compile('\/r\/([0-9a-zA-Z_]{1,21})')
+# match multireddits
+re_multi = re.compile('user\/([0-9a-zA-Z_-]{1,21})\/m\/([0-9a-zA-Z_-]{1,21})')
+# get all ('related','friends', 'subreddits') sections
+re_rel = re.compile('(#.*?[[fF]riends|[sS]ubreddits|[rR]elated]*.*?\n)((.|\n)*?)(#|\Z)')
 
 # global variable to handle exit
 exit = False
 
-# regexes
-re_sub = re.compile('\/r\/([0-9a-zA-Z_]{1,21})')
-re_multi = re.compile('user\/([0-9a-zA-Z_-]{1,21})\/m\/([0-9a-zA-Z_-]{1,21})')
 
+## functions ##
 
 # exit gracefully upon ctrl-c press
 def signal_handler(signal, frame):
@@ -91,14 +106,23 @@ def get_defaults():
 
 # visit the subreddit with praw, get information, and write to file
 def visit_sub(r, sub_name, f_output):
-    p_sub = r.get_subreddit(sub_name, fetch=True)
-    related = parse_sidebar(r,sub_name,p_sub.description if p_sub.description!=None else "")
+    # works for all valid public subs
+    try:
+        p_sub = r.get_subreddit(sub_name, fetch=True)
+        related = parse_sidebar(r,sub_name,p_sub.description if p_sub.description!=None else "")
     # create the subreddit info
-    sub = subreddit(sub_name, p_sub.subscribers, p_sub.over18,
+        sub = subreddit(sub_name, 'public', p_sub.subscribers, p_sub.over18,
             p_sub.submission_type if p_sub.submission_type!=None else "none",
             related)
-
-    write_sub(sub, f_output)
+        write_sub(sub, f_output)
+    # handle private or banned subs too
+    except praw.errors.Forbidden:
+        sub = subreddit(sub_name, 'private')
+        write_sub(sub, f_output)
+    except praw.errors.NotFound:
+        sub = subreddit(sub_name, 'banned')
+        write_sub(sub, f_output)
+    # if a sub does not exist, function will raise InvalidSubreddit error
 
     return sub
 
@@ -182,9 +206,7 @@ def main():
                 if sub not in seen:
                     to_visit.append(sub)
                     seen.add(sub)
-
-        except (praw.errors.Forbidden, praw.errors.NotFound,
-                praw.errors.InvalidSubreddit): #error with the sub, continue
+        except praw.errors.InvalidSubreddit: #if sub is invalid, continue
             pass
         except (KeyboardInterrupt, SystemExit):
             raise
