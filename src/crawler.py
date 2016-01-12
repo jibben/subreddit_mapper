@@ -33,7 +33,7 @@ re_wiki = re.compile('\/r\/(\w{1,21})\/wiki\/(\S?)($|\)|\#)')
 # get all ('related','friends', 'subreddits') sections
 # re_rel = re.compile('(#.*?[[fF]riends|[sS]ubreddits|[rR]elated]*.*?\n)((.|\n)*?)(#|\Z)')
 # match all general links
-re_url = re.compile('(\[\S+?\]\()(\S+\.\S+?)(\))')
+re_url = re.compile('(\[\S+?\]\()(\S+?\.\S+?)(\)\|?)')
 # global variable to handle exit
 exit = False
 
@@ -45,7 +45,7 @@ exit = False
 def signal_handler(signal, frame):
     global exit
     if exit:
-        sys.exit(5)
+        sys.exit(1)
     else:
         exit = True
         print "\nExiting..."
