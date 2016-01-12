@@ -7,9 +7,12 @@ import socket
 class link_lengthener():
 
     # initialize dictionary to optimize against re-querying
-    def __init__(self):
+    # Parameters:
+    # short: list of strings, known link shorteners
+    def __init__(self, short):
         self.seen = {}
-        self.no_redirects = {}
+        self.short = short
+
     # Parameters:
     # url: string of url to extend
     def extend(self, url):
@@ -17,16 +20,16 @@ class link_lengthener():
         if "://" not in url:
             url = "http://" + url
         o = urlparse(url)
+
+        # first check if server is a shortener, if so return
+        if o.netloc not in self.short:
+            return {'response':"Not Shortened", 'url':url}
+
         path = '/' if o.path=='' else o.path
         # check to see if url has already been queried
         if (o.netloc + path) in self.seen:
             return self.seen[o.netloc + path]
-        # else check to see if website has served many unshortened links
-        elif (o.netloc in self.no_redirects) and self.no_redirects[o.netloc] == 3:
-            url_dict = {}
-            url_dict['response'] = "HTTP/1.1 200 OK"
-            url_dict['url'] = url
-        # else try to query server and get response
+        # if not, try to query server and get response
         else:
             url_dict = {}
             try:
@@ -65,13 +68,13 @@ class NotHTTP(Exception):
 
 # function to get response
 def get_r(scheme, server, path):
-        if scheme.upper() == 'HTTPS':
-            connection = httplib.HTTPSConnection(server)
-        elif scheme.upper() == 'HTTP':
-            connection = httplib.HTTPConnection(server)
-        else:
-            raise NotHTTP("Link must be HTTP(S), not " + o.scheme)
-        connection.request("HEAD", path)
-        response = connection.getresponse()
-        connection.close()
-        return response
+    if scheme.upper() == 'HTTPS':
+        connection = httplib.HTTPSConnection(server)
+    elif scheme.upper() == 'HTTP':
+        connection = httplib.HTTPConnection(server)
+    else:
+        raise NotHTTP("Link must be HTTP(S), not " + o.scheme)
+    connection.request("HEAD", path)
+    response = connection.getresponse()
+    connection.close()
+    return response

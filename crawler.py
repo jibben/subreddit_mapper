@@ -6,7 +6,6 @@ import praw     # wrapper for python API
 import json     # to handle json from initial default fetch
 import urllib2  # to handle initial default fetch
 import re       # to get subreddit matches from sidebar
-import pprint   # for debuggging
 import os       # for checking for files / moving files
 import time     # to sleep after manual json request
 import traceback# to put full traceback into log file
@@ -23,12 +22,18 @@ from req import link_lengthener # class to extend shortened links
 ### regexes ###
 
 # match sub name
-re_sub = re.compile('\/r\/([0-9a-zA-Z_]{1,21})')
+re_sub = re.compile('\/r\/(\w{2,21})')
+# the only subs less than 3 characters are also special prefixes
+# so we won't lose any references to subs!
+re_sub_link = re.compile('(?!www.)(\w{3,21})\.reddit\.com')
 # match multireddits
 re_multi = re.compile('user\/([0-9a-zA-Z_-]{1,21})\/m\/([0-9a-zA-Z_-]{1,21})')
+# match wikis
+re_wiki = re.compile('\/r\/(\w{1,21})\/wiki\/(\S?)($|\)|\#)')
 # get all ('related','friends', 'subreddits') sections
-re_rel = re.compile('(#.*?[[fF]riends|[sS]ubreddits|[rR]elated]*.*?\n)((.|\n)*?)(#|\Z)')
-
+# re_rel = re.compile('(#.*?[[fF]riends|[sS]ubreddits|[rR]elated]*.*?\n)((.|\n)*?)(#|\Z)')
+# match all general links
+re_url = re.compile('(\[\S+?\]\()(\S+\.\S+?)(\))')
 # global variable to handle exit
 exit = False
 
@@ -36,26 +41,33 @@ exit = False
 ## functions ##
 
 # exit gracefully upon ctrl-c press
+# press twice to force quit
 def signal_handler(signal, frame):
     global exit
-    exit = True
-    print "\nExiting..."
+    if exit:
+        sys.exit(5)
+    else:
+        exit = True
+        print "\nExiting..."
 
 # function to find related subreddits from sidebar, returns list of names
-def parse_sidebar(r,sub_name,sidebar):
+def parse_sidebar(r,l,sub_name,sidebar):
     related = set()
-    # subreddits are of the form '/r/namehere'
-    # fist simply parse any mentions directly in sidebar
-    for match in re_sub.findall(sidebar):
-        related.add(match.lower().encode('ascii','ignore'))
 
-    # then find any mentioned multireddits and parse them
-    for match in re_multi.findall(sidebar):
-        multi = r.get_multireddit(match[0], match[1], fetch=True)
-        for sub in multi.subreddits:
-            related.add(sub.display_name.lower().encode('ascii','ignore'))
+    #get direct mentions of subs by name and multireddit
+    related |= get_subs(r, sidebar)
 
-    #TODO: handle link shorteners
+    #find wiki matches in the sidebar, search those for multis/subreddits
+    for w in re_wiki.findall(sidebar):
+        if re.search('[sS]ubs|[sS]ubreddits|[rR]elated|[fF]riends?', w[1]):
+           related |= get_subs(r, r.get_wiki_page(match[0], w[1]).content_md)
+
+    # find links, follow through to end point, then look there for subs
+    related |= parse_links(r, l, sidebar)
+
+    # TODO: only in related section?
+    #for match in re_rel.findall(sidebar):
+    #    related |= parse_links(r, match[1])
 
     # don't want self-pointers
     try:
@@ -64,6 +76,63 @@ def parse_sidebar(r,sub_name,sidebar):
         pass #no self-pointer in related
 
     return list(related)
+
+# function to get set of subreddits from text, w/ multireddit parsing
+def get_subs(r, text):
+    subs = set()
+    # subreddits are of the form '/r/namehere'
+    # fist simply parse any mentions directly in sidebar
+    for sub in re_sub.findall(text):
+        subs.add(sub.lower().encode('ascii','ignore'))
+    # then parse for subs of the form 'namehere.reddit.com'
+    for sub in re_sub_link.findall(text):
+        subs.add(sub.lower().encode('ascii','ignore'))
+    # then find any mentioned multireddits and parse them
+    for match in re_multi.findall(text):
+        subs |= parse_multi(r, match[0:2])
+
+    return subs
+
+# function to get list of subreddits from multireddit
+def parse_multi(r, multi):
+    subs = set()
+
+    m = r.get_multireddit(multi[0], multi[1], fetch=True)
+
+    for sub in m.subreddits:
+        subs.add(sub.display_name.lower().encode('ascii','ignore'))
+
+    return subs
+
+# function to parse links and find end-subs from text
+def parse_links(r, l, text):
+    subs = set()
+    for link in re_url.findall(text):
+        # if a link is found that does not include reddit
+        if 'reddit.com' not in link[1]:
+
+            # AND the link when lengthened does include reddit
+            long_url = l.extend(link[1])
+            if 'reddit.com' in long_url:
+                # try to parse end-result
+
+                # check if multireddit
+                if '/m/' in long_url:
+                    m = re_multi.match(long_url)
+                    subs |= parse_multi(r, [multi.group(1), multi.group(2)])
+
+                # then check if wiki
+                elif '/wiki/' in long_url:
+                    w = re_wiki.match(long_url)
+                    subs |= get_subs(r,
+                            r.get_wiki_page(w.group(0), w.group(1)).content_md)
+
+                # lastly check if simple subreddit
+                elif '/r/' in long_url:
+                    sub = re_sub.match(long_url).group(0)
+                    subs.add(sub.lower().encode('ascii','ignore'))
+
+    return subs
 
 # function to write visited subreddit to output file
 def write_sub(sub, f_output):
@@ -104,12 +173,30 @@ def get_defaults():
 
     return default_list
 
+# function to handle fetching list of shorteners from longurl API
+# hopefully they never disable this API...
+def get_shorteners():
+    # if file, read and return it
+    if os.path.isfile('shorteners.json'):
+        with open('shorteners.json', 'rb') as f_shorteners:
+            shorteners = json.load(f_shorteners)
+        return shorteners
+    # if no file, download write and return it
+    else:
+        shorteners_url = urllib2.urlopen("http://api.longurl.org/v2/services?format=json")
+        # just get list of keys
+        shorteners = list(json.load(shorteners_url).keys())
+        with open('shorteners.json', 'w') as f_shorteners:
+            f_shorteners.write(json.dumps(shorteners))
+
+        return shorteners
+
 # visit the subreddit with praw, get information, and write to file
-def visit_sub(r, sub_name, f_output):
+def visit_sub(r, l, sub_name, f_output):
     # works for all valid public subs
     try:
         p_sub = r.get_subreddit(sub_name, fetch=True)
-        related = parse_sidebar(r,sub_name,p_sub.description if p_sub.description!=None else "")
+        related = parse_sidebar(r,l,sub_name,p_sub.description if p_sub.description!=None else "")
     # create the subreddit info
         sub = subreddit(sub_name, 'public', p_sub.subscribers, p_sub.over18,
             p_sub.submission_type if p_sub.submission_type!=None else "none",
@@ -189,8 +276,9 @@ def init_vars():
     return [to_visit, seen, output]
 
 def main():
-    # initialize praw object and holding structures
-    r = build_praw('subreddit_mapper v0.3 github.com/jibbenHillen')
+    # initialize praw object and link_lengthener
+    r = build_praw('subreddit_mapper v0.5 github.com/jibbenHillen')
+    l = link_lengthener(get_shorteners())
 
     # initialize to_visit and seen
     to_visit,seen,out_file = init_vars()
@@ -199,7 +287,7 @@ def main():
     while to_visit and not exit:
         sub_name = to_visit.pop()
         try:
-            current_sub = visit_sub(r, sub_name, out_file)
+            current_sub = visit_sub(r, l, sub_name, out_file)
 
             # update set of seen and stack
             for sub in current_sub.related:
