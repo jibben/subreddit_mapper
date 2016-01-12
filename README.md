@@ -8,6 +8,9 @@ To get an ID and secret, go to [reddit's app page](https://www.reddit.com/prefs/
 ## Behavior
 
 ### Current behavior
+v0.5
+Now scrapes related subreddits from link-shorteners, wikis, and mulireddits
+
 v0.3
 
 Now gracefully handles incorrect subreddit names, forbidden subreddits, and banned subreddits. Will gracefully exit on ctrl-c. Saves all crashes and exits to out.log.
