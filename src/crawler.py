@@ -143,7 +143,7 @@ def build_praw(user_agent):
     rd = praw.Reddit(user_agent=user_agent, api_request_delay=1.0)
 
     # read in info from config file
-    with open('config.json', 'rb') as f_config:
+    with open('../config.json', 'rb') as f_config:
         config = json.load(f_config)
 
     # set up authorization
@@ -156,15 +156,15 @@ def build_praw(user_agent):
 # check for local list of defaults and load, otherwise download and load
 def get_defaults():
     # if no file, download and write it
-    if not os.path.isfile('default.json'):
+    if not os.path.isfile('../data/default.json'):
         default_url = urllib2.urlopen("https://www.reddit.com/subreddits/default.json")
-        with open('default.json', 'w') as f_defaults:
+        with open('../data/default.json', 'w') as f_defaults:
             f_defaults.write(default_url.read())
 
         time.sleep(1)   #we have to sleep to respect API rules
 
     # now can load defaults from file
-    with open('default.json', 'rb') as f_defaults:
+    with open('../data/default.json', 'rb') as f_defaults:
         default_dict = json.load(f_defaults)
 
     default_list = []
@@ -177,8 +177,8 @@ def get_defaults():
 # hopefully they never disable this API...
 def get_shorteners():
     # if file, read and return it
-    if os.path.isfile('shorteners.json'):
-        with open('shorteners.json', 'rb') as f_shorteners:
+    if os.path.isfile('../data/shorteners.json'):
+        with open('../data/shorteners.json', 'rb') as f_shorteners:
             shorteners = json.load(f_shorteners)
         return shorteners
     # if no file, download write and return it
@@ -186,7 +186,7 @@ def get_shorteners():
         shorteners_url = urllib2.urlopen("http://api.longurl.org/v2/services?format=json")
         # just get list of keys
         shorteners = list(json.load(shorteners_url).keys())
-        with open('shorteners.json', 'w') as f_shorteners:
+        with open('../data/shorteners.json', 'w') as f_shorteners:
             f_shorteners.write(json.dumps(shorteners))
 
         return shorteners
@@ -218,7 +218,7 @@ def visit_sub(r, l, sub_name, f_output):
 # exit
 def exit_write(cur_sub, to_visit, seen, f, e, traceback = ""):
     # write error info
-    with open('out.log', 'a') as f:
+    with open('../data/out.log', 'a') as f:
         f.write("Time: ")
         f.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
         f.write("\nExited on sub: " + cur_sub)
@@ -228,11 +228,11 @@ def exit_write(cur_sub, to_visit, seen, f, e, traceback = ""):
         f.write("\n\n")
 
     # write seen to seen.json
-    with open('seen.json', 'w') as f:
+    with open('../data/seen.json', 'w') as f:
         f.write(json.dumps(list(seen)))
 
     # write to_visit to to_visit.json
-    with open('to_visit.json', 'w') as f:
+    with open('../data/to_visit.json', 'w') as f:
         f.write(json.dumps(to_visit))
 
     f.close () # close output file
@@ -244,17 +244,17 @@ def exit_write(cur_sub, to_visit, seen, f, e, traceback = ""):
 # else start from scratch
 # if starting from scratch and old output.csv, move to output_epoch.csv
 def init_vars():
-    has_visit = os.path.isfile('to_visit.json')
-    has_seen = os.path.isfile('seen.json')
+    has_visit = os.path.isfile('../data/to_visit.json')
+    has_seen = os.path.isfile('../data/seen.json')
 
     if(has_visit and has_seen):
-        with open('to_visit.json') as f_visit:
+        with open('../data/to_visit.json') as f_visit:
             to_visit = json.load(f_visit)
 
-        with open('seen.json', 'rb') as f_seen:
+        with open('../data/seen.json', 'rb') as f_seen:
             seen = set(json.load(f_seen))
         try:
-            output = open('output.csv', 'a')
+            output = open('../data/output.csv', 'a')
         except:
             print "no subreddits.csv. delete to_visit and seen to start over"
             exit(1)
@@ -265,13 +265,13 @@ def init_vars():
         to_visit = get_defaults()
         seen = set(to_visit)
 
-        if os.path.isfile('output.csv'):
-            new_name = "output_"
+        if os.path.isfile('../data/output.csv'):
+            new_name = "../data/output_"
             new_name += str(int(time.time()))
             new_name += ".csv"
-            os.rename("output.csv", new_name)
+            os.rename("../data/output.csv", new_name)
 
-        output = open('output.csv', 'w')
+        output = open('../data/output.csv', 'w')
 
     return [to_visit, seen, output]
 
