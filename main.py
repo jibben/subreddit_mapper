@@ -27,7 +27,6 @@ def get_shorteners():
     return shorteners
 
 def main():
-    print "crawling..."
     subreddit_crawler = crawler('subreddit_mapper v1.0 github.com/jibbenHillen', get_shorteners())
     subreddit_crawler.crawl()
 

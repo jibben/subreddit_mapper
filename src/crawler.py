@@ -27,6 +27,7 @@ class crawler():
         # out_file: csv file to write subreddit information to
         # reg: dictionary of regexes, used for scraping sidebar
         # exit: boolean of whether ctrl-c has been pressed
+        # start_time: float of start time in seconds since epoch
 
     # Inputs:
         # user_agent: string descriptor to authenticate with Reddit
@@ -71,12 +72,14 @@ class crawler():
         # var to handle exit
         self.exit = False
 
+        # var to time process
+        self.start_time = None
+
     ## functions ##
 
     # exit gracefully upon ctrl-c press
     # press twice to force quit
     def signal_handler(self, signal, frame):
-        self.exit
         if self.exit:
             sys.exit(1)
         else:
@@ -84,6 +87,8 @@ class crawler():
             print "\nExiting..."
 
     def crawl(self):
+        self.start_time = time.time()
+        print "Start time: " + time.ctime(self.start_time)[4:19]
         while self.to_visit and not self.exit:
             sub_name = self.to_visit.pop()
             try:
@@ -113,8 +118,14 @@ class crawler():
     # write to_visit.json and seen.json to file
     # 3) exit
     def exit_write(self, cur_sub, e, traceback = ""):
+        end_time = time.time()
+        print "End time: " + time.ctime(end_time)[4:19]
         with open('./data/exit.log', 'a') as f:
-            f.write("Time: "+ time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + "\n")
+            f.write("End time: ")
+            f.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(end_time)) + "\n")
+            f.write("Start time: ")
+            f.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(self.start_time)) + "\n")
+            f.write("Time elapsed: " + str(round(end_time - self.start_time, 1)) + " seconds\n")
             f.write("Exited on sub: " + cur_sub + "\n")
             f.write("Number of subs scraped: " + str(self.count) + "\n")
             f.write(str(e) + "\n")
