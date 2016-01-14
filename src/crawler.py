@@ -114,14 +114,13 @@ class crawler():
     # 3) exit
     def exit_write(self, cur_sub, e, traceback = ""):
         with open('./data/exit.log', 'a') as f:
-            f.write("Time: ")
-            f.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
-            f.write("\nExited on sub: " + cur_sub)
-            f.write("visited: " + str(self.count) + " subs\n")
-            f.write("\n" + str(e))
+            f.write("Time: "+ time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + "\n")
+            f.write("Exited on sub: " + cur_sub + "\n")
+            f.write("Number of subs scraped: " + str(self.count) + "\n")
+            f.write(str(e) + "\n")
             if traceback:
-                f.write("\n" + traceback)
-            f.write("\n\n")
+                f.write(traceback + "\n")
+            f.write("\n")
 
         if self.to_visit:
             with open('./data/.seen.json', 'w') as f:
@@ -251,15 +250,15 @@ def build_praw(user_agent):
 # check for local list of defaults and load, otherwise download and load
 def get_defaults():
     # if no file, download and write it
-    if not os.path.isfile('./data/.default.json'):
+    if not os.path.isfile('./data/.defaults.json'):
         default_url = urllib2.urlopen("https://www.reddit.com/subreddits/default.json")
-        with open('./data/.default.json', 'w') as f_defaults:
+        with open('./data/.defaults.json', 'w') as f_defaults:
             f_defaults.write(default_url.read())
 
         time.sleep(1)   #we have to sleep to respect API rules
 
     # now can load defaults from file
-    with open('./data/.default.json', 'rb') as f_defaults:
+    with open('./data/.defaults.json', 'rb') as f_defaults:
         default_dict = json.load(f_defaults)
 
     default_list = []
@@ -267,4 +266,3 @@ def get_defaults():
         default_list.append(sub["data"]["display_name"].lower())
 
     return default_list
-

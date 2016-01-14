@@ -4,7 +4,7 @@ import os       # to get shorteners from longurl API
 import urllib2  # ^^
 import json     # ^^
 
-from src.crawler_obj import crawler
+from src.crawler import crawler
 
 # function to handle fetching list of shorteners from longurl API
 # hopefully they never disable this API...
@@ -27,6 +27,7 @@ def get_shorteners():
     return shorteners
 
 def main():
+    print "crawling..."
     subreddit_crawler = crawler('subreddit_mapper v1.0 github.com/jibbenHillen', get_shorteners())
     subreddit_crawler.crawl()
 
