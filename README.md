@@ -8,7 +8,13 @@ To get an ID and secret, go to [reddit's app page](https://www.reddit.com/prefs/
 ## Behavior
 
 ### Current behavior
+v1.0
+
+Everything appears to work corrrectly, tested with up to 2000 scraped subreddits. Run with main.py
+
+
 v0.5
+
 Now scrapes related subreddits from link-shorteners, wikis, and mulireddits
 
 v0.3
