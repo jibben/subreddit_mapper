@@ -117,6 +117,8 @@ class crawler():
     # 2) if there are still subs to visit,
     # write to_visit.json and seen.json to file
     # 3) exit
+    # sometimes socket will raise an error code not wrapped in an Exception
+    # This will happen upon ctrl-c sometimes, so handle manually
     def exit_write(self, cur_sub, e, traceback = ""):
         end_time = time.time()
         print "End time: " + time.ctime(end_time)[4:19]
@@ -128,10 +130,14 @@ class crawler():
             f.write("Time elapsed: " + str(round(end_time - self.start_time, 1)) + " seconds\n")
             f.write("Exited on sub: " + cur_sub + "\n")
             f.write("Number of subs scraped: " + str(self.count) + "\n")
-            f.write(str(e) + "\n")
-            if traceback:
-                f.write(traceback + "\n")
-            f.write("\n")
+
+            if "Interupted system call" in str(e):
+                f.write("Ctrl-C Pressed\n")
+            else:
+                f.write(str(e) + "\n")
+                if traceback:
+                    f.write(traceback + "\n")
+                f.write("\n")
 
         if self.to_visit:
             with open('./data/.seen.json', 'w') as f:

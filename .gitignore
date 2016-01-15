@@ -1,4 +1,4 @@
-out.log
+exit.log
 output.csv
 *.json
 *.pyc
