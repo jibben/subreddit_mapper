@@ -44,11 +44,6 @@ class link_lengthener():
                 # if status code indicates OK (1xx or 2xx)
                 elif r.status / 100 in (1,2):
                     url_dict['url'] = o.scheme + "://" + o.netloc + path
-                    # keep track of servers that don't redirect
-                    if o.netloc in self.no_redirects:
-                        self.no_redirects[o.netloc] += 1
-                    else:
-                        self.no_redirects[o.netloc] = 1
                 # if status code indicates req or server error (4xx or 5xx)
                 # of if server returns invalid status code
                 else:
