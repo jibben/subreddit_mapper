@@ -155,9 +155,7 @@ class crawler():
     def visit_sub(self, sub_name):
         try: # valid, public subreddit
             p_sub = self.r.get_subreddit(sub_name)
-
             related = self.parse_sidebar(sub_name,p_sub.description if p_sub.description!=None else "")
-
             sub = subreddit(sub_name, 'public', p_sub.subscribers, p_sub.over18,
                 p_sub.submission_type if p_sub.submission_type!=None else "none",
                 related)
@@ -181,7 +179,6 @@ class crawler():
         for w in self.reg['wiki'].findall(sidebar):
             if re.search('[sS]ubs|[sS]ubreddits|[rR]elated|[fF]riends?', w[1]):
                related |= self.get_subs(r.get_wiki_page(match[0], w[1]).content_md)
-
         related |= self.parse_links(sidebar)
 
         # don't want self-pointers
@@ -203,21 +200,23 @@ class crawler():
         # look for multireddits, parse them
         for match in self.reg['multi'].findall(text):
             subs |= self.parse_multi(match[0:2])
-
         return subs
 
     # function to get list of subreddits from multireddit
+    # returns empty set if invalid multireddit
     def parse_multi(self, multi):
         subs = set()
+        try:
+            m = self.r.get_multireddit(multi[0], multi[1])
 
-        m = self.r.get_multireddit(multi[0], multi[1])
-
-        for sub in m.subreddits:
-            subs.add(sub.display_name.lower().encode('ascii','ignore'))
-
+            for sub in m.subreddits:
+                subs.add(sub.display_name.lower().encode('ascii','ignore'))
+        except praw.errors.NotFound:
+            pass
         return subs
 
     # function to find reddit links hidden through non-reddit link shortener
+    # if an invalid link is found, this will essentially ignore it
     def parse_links(self, text):
         subs = set()
         for link in self.reg['url'].findall(text):
