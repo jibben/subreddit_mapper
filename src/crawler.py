@@ -154,7 +154,7 @@ class crawler():
     # raises praw.errors.InvalidSubreddit error in case of invalid name
     def visit_sub(self, sub_name):
         try: # valid, public subreddit
-            p_sub = self.r.get_subreddit(sub_name, fetch=True)
+            p_sub = self.r.get_subreddit(sub_name)
 
             related = self.parse_sidebar(sub_name,p_sub.description if p_sub.description!=None else "")
 
@@ -210,7 +210,7 @@ class crawler():
     def parse_multi(self, multi):
         subs = set()
 
-        m = self.r.get_multireddit(multi[0], multi[1], fetch=True)
+        m = self.r.get_multireddit(multi[0], multi[1])
 
         for sub in m.subreddits:
             subs.add(sub.display_name.lower().encode('ascii','ignore'))
