@@ -89,6 +89,7 @@ class crawler():
     def crawl(self):
         self.start_time = time.time()
         print "Start time: " + time.ctime(self.start_time)[4:19]
+        sub_name = ""
         while self.to_visit and not self.exit:
             sub_name = self.to_visit.pop()
             try:
@@ -108,7 +109,8 @@ class crawler():
                 #exit gracefully
                 self.exit_write(sub_name,e,traceback.format_exc())
             self.count += 1
-        if exit:
+        print self.exit
+        if self.exit:
             self.exit_write(sub_name,"Ctrl-C Pressed")
         else:
             self.exit_write(sub_name,"Completed successfully")
@@ -139,12 +141,11 @@ class crawler():
                     f.write(traceback + "\n")
                 f.write("\n")
 
-        if self.to_visit:
-            with open('./data/.seen.json', 'w') as f:
-                f.write(json.dumps(list(self.seen)))
+        with open('./data/.seen.json', 'w') as f:
+            f.write(json.dumps(list(self.seen)))
 
-            with open('./data/.to_visit.json', 'w') as f:
-                f.write(json.dumps(self.to_visit))
+        with open('./data/.to_visit.json', 'w') as f:
+            f.write(json.dumps(self.to_visit))
 
         self.out_file.close()
         sys.exit(2)
