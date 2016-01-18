@@ -109,7 +109,6 @@ class crawler():
                 #exit gracefully
                 self.exit_write(sub_name,e,traceback.format_exc())
             self.count += 1
-        print self.exit
         if self.exit:
             self.exit_write(sub_name,"Ctrl-C Pressed")
         else:
